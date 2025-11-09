@@ -443,6 +443,7 @@ export class ShellTool extends BaseDeclarativeTool<
             type: 'boolean',
             description:
               'Whether to run the command in background. Default is false. Set to true for long-running processes like development servers, watchers, or daemons that should continue running without blocking further commands.',
+            default: false,
           },
           description: {
             type: 'string',
@@ -455,11 +456,52 @@ export class ShellTool extends BaseDeclarativeTool<
               '(OPTIONAL) The absolute path of the directory to run the command in. If not provided, the project root directory is used. Must be a directory within the workspace and must already exist.',
           },
         },
-        required: ['command', 'is_background'],
+        required: ['command'],
       },
       false, // output is not markdown
       true, // output can be updated
     );
+  }
+
+  protected createInvocation(
+    params: ShellToolParams,
+  ): ToolInvocation<ShellToolParams, ToolResult> {
+    // Ensure is_background is a proper boolean, with a default of false
+    const processedParams = {
+      ...params,
+      is_background: this.normalizeIsBackground(params.is_background),
+    };
+    return new ShellToolInvocation(
+      this.config,
+      processedParams,
+      this.allowlist,
+    );
+  }
+
+  private normalizeIsBackground(value: unknown): boolean {
+    // If value is undefined (parameter not provided), return default value false
+    if (value === undefined) {
+      return false;
+    }
+
+    // If value is already a boolean, return as is
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    // If value is a string "true" or "false", convert to boolean
+    if (typeof value === 'string') {
+      if (value.toLowerCase() === 'true') {
+        return true;
+      }
+      if (value.toLowerCase() === 'false') {
+        return false;
+      }
+    }
+
+    // For any other type, convert using Boolean constructor
+    // This handles cases like numbers, null, etc.
+    return Boolean(value);
   }
 
   protected override validateToolParamValues(
@@ -495,11 +537,5 @@ export class ShellTool extends BaseDeclarativeTool<
       }
     }
     return null;
-  }
-
-  protected createInvocation(
-    params: ShellToolParams,
-  ): ToolInvocation<ShellToolParams, ToolResult> {
-    return new ShellToolInvocation(this.config, params, this.allowlist);
   }
 }
